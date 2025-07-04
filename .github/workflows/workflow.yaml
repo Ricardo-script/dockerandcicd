@@ -2,8 +2,9 @@ name: Continuos Integration - Continuos Delivery #A primeira coisa é definir o 
 
 #definir oque vai disparar a pipeline
 on:
-    push: #definir o push de um código
-        branches: ["main"] #toda vez que tiver um push desse código ele vai disparar
+    push:
+        #definir o push de um código
+        branches: [ "main" ] #toda vez que tiver um push desse código ele vai disparar
 
 # definir os fluxos (nesse exempo o CI e CD)
 jobs:
@@ -12,17 +13,45 @@ jobs:
         runs-on: ubuntu-latest #especificar em qual máquina o workflow execute, o github actions vai separar uma máquina virtual para executar
         #definir as etapas de execução
         steps:
-            # A primeira coisa que esse Job vai fazer é pegar o cód do repos. e install as depend. e rodar os comandos ex: build, teste ...
-            # Para fazer isso usa-se a Action de checkout, basicamente ele faz um git clone do código e vai rodar os comandos
-            - uses: actions/checkout@v3
+          # A primeira coisa que esse Job vai fazer é pegar o cód do repos. e install as depend. e rodar os comandos ex: build, teste ...
+          # Para fazer isso usa-se a Action de checkout, basicamente ele faz um git clone do código e vai rodar os comandos
+          - uses: actions/checkout@v3
 
-            - name: Using Node.js # declarar um nome para instalar o node
-              uses: actions/setup-node@v2
-              with: # é forma de passar argumento para dentro dessa action e aqui passar a versão do node
-                  node-version: 20.x
+          - name: Using Node.js # declarar um nome para instalar o node
+            uses: actions/setup-node@v2
+            with:
+                # é forma de passar argumento para dentro dessa action e aqui passar a versão do node
+                node-version: 20.x
 
-            - name: run install, build and test
-              run: |
-                  npm install
-                  npm run build
-                  npm run test
+          - name: run install, build and test
+            run: |
+                npm install
+                npm run build
+                npm run test
+
+          - name: Upload build folder
+            uses: actions/upload-artifact@v3
+            with:
+                name: build-dist
+                path: dist
+
+    continuos-delivery:
+        needs: continuos-integration
+        runs-on: ubuntu-latest
+        steps:
+          - name: Download build artifact
+            uses: actions/download-artifact@v3
+            with:
+                name: build-dist
+                path: dist
+
+          - name: Install Netlify CLI
+            run: npm install -g netlify-cli
+
+          - name: Deploy to Netlify
+            run: |
+                netlify deploy --dir=dist --prod --site=$NETLIFY_SITE_ID
+            env:
+                NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+                NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
